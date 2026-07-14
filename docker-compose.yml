@@ -1,0 +1,21 @@
+# Convenience wrapper. Build + run the Shield frontend:
+#   docker compose up --build
+# Then open http://localhost:8088
+#
+# BACKEND_URL points the /api proxy at the Shield backend. By default it targets
+# the host machine (where you run the backend on :8080). Override in a .env file
+# or the shell, e.g. BACKEND_URL=http://shield-backend:8080 if it's a container
+# on the same network.
+services:
+  frontend:
+    build: .
+    image: shield-frontend
+    ports:
+      - "8088:80"
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8080}
+    # Lets the container reach a backend running on the host (Linux needs this
+    # mapping explicitly; Docker Desktop provides it automatically).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

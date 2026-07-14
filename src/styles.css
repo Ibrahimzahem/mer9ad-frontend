@@ -1,0 +1,234 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   Shield — "ink on paper" theme
+   Beige & black, editorial printmaking. No shadows, no glass,
+   no decorative gradients. Hairline rules over boxed cards.
+   ============================================================ */
+
+@theme {
+  /* paper + ink */
+  --color-paper: #ede8dc;
+  --color-paper-deep: #e4ddca;
+  --color-paper-soft: #f2eee4;
+  --color-ink: #1a1712;
+
+  /* ink at low opacity for hairlines / muted text */
+  --color-ink-90: rgba(26, 23, 18, 0.9);
+  --color-ink-70: rgba(26, 23, 18, 0.7);
+  --color-ink-55: rgba(26, 23, 18, 0.55);
+  --color-ink-40: rgba(26, 23, 18, 0.4);
+  --color-ink-20: rgba(26, 23, 18, 0.2);
+  --color-ink-12: rgba(26, 23, 18, 0.12);
+  --color-ink-08: rgba(26, 23, 18, 0.08);
+
+  /* desaturated, earthy state accents — used sparingly */
+  --color-green: #3a5a40;
+  --color-green-soft: #e2e7dd;
+  --color-ochre: #b07a2e;
+  --color-ochre-soft: #efe3cd;
+  --color-oxblood: #7a2e2e;
+  --color-oxblood-soft: #ecdcd6;
+
+  --font-display: 'Cairo', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Cairo', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-phone: 2.75rem;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+/* very subtle paper grain — not decorative, just texture */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+}
+
+* {
+  border-color: var(--color-ink-12);
+}
+
+/* tabular numerals for balances / money */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* editorial small-caps kicker — with a short heavy ink tick at the start */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--color-ink-55);
+}
+.kicker::before {
+  content: '';
+  flex: none;
+  width: 1.15rem;
+  height: 2px;
+  background: var(--color-ink);
+}
+/* centered variant (e.g. under a result stamp) */
+.kicker-center {
+  justify-content: center;
+}
+
+/* hairline rule */
+.rule {
+  height: 1px;
+  background: var(--color-ink-12);
+}
+
+/* masthead double-rule (newspaper): heavy line over a hairline */
+.mast-rule > i {
+  display: block;
+  background: var(--color-ink);
+}
+.mast-rule > i:first-child {
+  height: 2.5px;
+}
+.mast-rule > i:last-child {
+  height: 1px;
+  margin-top: 2.5px;
+}
+
+/* ledger-total rule: two stacked hairlines under a figure */
+.ledger-rule > i {
+  display: block;
+  height: 1px;
+  background: var(--color-ink);
+}
+.ledger-rule > i:last-child {
+  margin-top: 3px;
+}
+
+/* Motion — minimal, purposeful. The ORANGE transition is deliberately slow. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.anim-fade-up {
+  animation: fade-up 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.anim-bubble {
+  animation: bubble-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* The grey-zone reveal: slow, unhurried — breaks manufactured urgency. */
+@keyframes orange-veil {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-orange {
+  animation: orange-veil 1100ms ease both;
+}
+
+/* result stamp — a quick inked settle */
+@keyframes stamp-in {
+  0% {
+    opacity: 0;
+    transform: rotate(-5deg) scale(1.35);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-5deg) scale(1);
+  }
+}
+.anim-stamp {
+  animation: stamp-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* wrong-passcode shake */
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+.anim-shake {
+  animation: shake 400ms both;
+}
+
+@keyframes dot-blink {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+.typing-dot {
+  animation: dot-blink 1.4s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up,
+  .anim-bubble,
+  .anim-orange,
+  .anim-stamp {
+    animation: none;
+  }
+}
+
+/* hide scrollbars inside the phone for a native-app feel */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
