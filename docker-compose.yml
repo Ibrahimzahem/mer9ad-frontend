@@ -11,7 +11,7 @@ services:
     build: .
     image: shield-frontend
     ports:
-      - "8088:80"
+      - "8088:3000"
     environment:
       BACKEND_URL: ${BACKEND_URL:-http://host.docker.internal:8080}
     # Lets the container reach a backend running on the host (Linux needs this
