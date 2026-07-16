@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getFraudIntel, getScamPlaybook } from '../lib/api'
-import type { EntryMethod, FraudIntelRecord } from '../lib/types'
+import type { AgentStepInfo, EntryMethod, FraudIntelRecord, FraudIntelTrace } from '../lib/types'
 import { useApp } from '../state/AppContext'
 import { formatTime, maskIban } from '../lib/format'
 import { cn } from '../lib/utils'
@@ -20,6 +20,31 @@ const entryLabel: Record<EntryMethod, string> = {
   typed: 'مكتوب',
   pasted: 'ملصوق',
   autofilled: 'معبّأ',
+}
+
+const stepLabel: Record<AgentStepInfo['type'], string> = {
+  THOUGHT: 'تفكير',
+  TOOL_CALL: 'استدعاء أداة',
+  TOOL_RESULT: 'نتيجة',
+  FINAL_ANSWER: 'الخلاصة',
+}
+
+// The docs promise `trace` is a flat, `step`-keyed array (matching
+// agents[].trace on /api/transfer-intent). The live backend actually sends
+// steps wrapped under `.steps` and keyed `stepNumber`. Accept either so
+// rendering doesn't depend on which one is deployed at a given moment.
+function normalizeTrace(trace: FraudIntelTrace | null): AgentStepInfo[] {
+  if (!trace) return []
+  const rawSteps = Array.isArray(trace) ? trace : trace.steps
+  if (!rawSteps) return []
+  return rawSteps.map((s, i) => ({
+    step: s.step ?? s.stepNumber ?? i + 1,
+    type: s.type,
+    toolName: s.toolName,
+    toolArguments: s.toolArguments,
+    content: s.content,
+    durationMs: s.durationMs,
+  }))
 }
 
 export function IntelDashboard() {
@@ -123,7 +148,10 @@ export function IntelDashboard() {
 }
 
 function IntelRow({ r }: { r: FraudIntelRecord }) {
+  const [expanded, setExpanded] = useState(false)
   const s = r.signalsSnapshot
+  const steps = normalizeTrace(r.trace)
+  const hasTrace = steps.length > 0
   const cells: [string, string, boolean?][] = [
     ['المبلغ', s.amount.toLocaleString('en-US')],
     ['عمر الحساب', `${s.beneficiaryAccountAgeDays} يوم`, s.beneficiaryAccountAgeDays <= 10],
@@ -163,7 +191,76 @@ function IntelRow({ r }: { r: FraudIntelRecord }) {
             نمط مُكتشَف: {r.detectedPattern}
           </div>
         )}
+
+        {hasTrace && (
+          <>
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="mt-2.5 flex items-center gap-1.5 text-[10.5px] font-bold tracking-[0.04em] text-ink-55 active:opacity-70"
+            >
+              <span className={cn('inline-block transition-transform duration-200', expanded && 'rotate-180')}>
+                ▾
+              </span>
+              {expanded ? 'إخفاء تفكير الوكيل' : 'عرض تفكير الوكيل'}
+            </button>
+            {expanded && <ReasoningTrace steps={steps} />}
+          </>
+        )}
       </div>
+    </div>
+  )
+}
+
+// Same THOUGHT → TOOL_CALL → TOOL_RESULT → FINAL_ANSWER shape as
+// DecisionResponse.agents[].trace — rendered in the feed's own ledger
+// language instead of the Mission Control panel's judge-facing style.
+function ReasoningTrace({ steps }: { steps: AgentStepInfo[] }) {
+  return (
+    <div className="anim-fade-up mt-2.5 border-t border-ink-12 pt-2">
+      {steps.map((step, i) => (
+        <div key={i} className="flex gap-2.5 py-1.5">
+          <span className="w-4 shrink-0 pt-px text-[9px] font-bold text-ink-20 tnum" dir="ltr">
+            {String(step.step).padStart(2, '0')}
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[8.5px] font-bold tracking-[0.06em] text-ink-40">
+                {stepLabel[step.type]}
+              </span>
+              {step.toolName && (
+                <span className="truncate font-mono text-[10px] text-ink-55" dir="ltr">
+                  {step.toolName}
+                </span>
+              )}
+              {step.durationMs > 0 && (
+                <span className="mr-auto shrink-0 text-[9px] text-ink-20 tnum" dir="ltr">
+                  {step.durationMs}ms
+                </span>
+              )}
+            </div>
+            {step.toolArguments && (
+              <p className="mt-0.5 truncate font-mono text-[9.5px] text-ink-40" dir="ltr">
+                {step.toolArguments}
+              </p>
+            )}
+            {step.content && (
+              <p
+                className={cn(
+                  'mt-0.5 text-[11px] leading-snug',
+                  step.type === 'THOUGHT' && 'italic text-ink-55',
+                  step.type === 'TOOL_RESULT' && 'text-ink-70',
+                  step.type === 'FINAL_ANSWER' &&
+                    'border-r-[3px] border-ochre bg-ochre-soft px-2 py-1 text-ochre',
+                )}
+                dir="auto"
+              >
+                {step.content}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

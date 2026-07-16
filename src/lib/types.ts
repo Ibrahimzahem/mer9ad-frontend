@@ -63,6 +63,23 @@ export interface AgentStepInfo {
   durationMs: number
 }
 
+// GET /api/fraud-intel's `trace` is documented as the same flat, `step`-keyed
+// array as agents[].trace above, but the live backend actually sends steps
+// wrapped in an object and keyed `stepNumber`. Typed loosely here and
+// normalized in IntelDashboard so either shape (or a future fix to match the
+// docs) renders without crashing.
+export interface RawTraceStep {
+  step?: number
+  stepNumber?: number
+  type: AgentStepInfo['type']
+  toolName: string | null
+  toolArguments: string | null
+  content: string | null
+  durationMs: number
+}
+
+export type FraudIntelTrace = RawTraceStep[] | { steps: RawTraceStep[] }
+
 export interface SarInfo {
   sarId: string
   timestamp: string
@@ -161,6 +178,9 @@ export interface FraudIntelRecord {
   signalsSnapshot: SignalsSnapshot
   detectedPattern: string | null
   timestamp: string
+  // Always present, always nullable (unlike the NON_NULL-omitted fields
+  // above) — null whenever the backend ran in deterministic (no-AI) mode.
+  trace: FraudIntelTrace | null
 }
 
 // Thrown by api.ts when the backend returns HTTP 400 INVALID_IBAN.
