@@ -11,18 +11,17 @@ COPY . .
 ENV VITE_API_BASE=""
 RUN npm run build
 
-# ── Stage 2: Serve with zero-config Node server ──────────────────────────────
-FROM node:22-alpine AS runtime
-WORKDIR /app
+# ── Stage 2: Serve with nginx, reverse-proxying /api to the backend ──────────
+FROM nginx:1.27-alpine AS runtime
 
-# Install 'serve', a simple static file server
-RUN npm install -g serve
+# Copy the built static assets from Stage 1
+COPY --from=build /app/dist /usr/share/nginx/html
 
-# Copy the built files from Stage 1
-COPY --from=build /app/dist ./dist
+# Rendered at container start by nginx's built-in envsubst entrypoint, which
+# substitutes ${BACKEND_URL} (and only env vars that are actually set).
+COPY nginx.conf.template /etc/nginx/templates/default.conf.template
 
-# serve runs on 3000 by default
-EXPOSE 3000
+# Default so the image still runs standalone; override at deploy time.
+ENV BACKEND_URL="http://host.docker.internal:8080"
 
-# Run serve on the dist folder, routing all unknown requests to index.html (-s)
-CMD ["serve", "-s", "dist", "-l", "3000"]
+EXPOSE 80
