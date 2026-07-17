@@ -43,10 +43,12 @@ function normalizeTrace(trace: FraudIntelTrace | null): AgentStepInfo[] {
 type TraceItem =
   | { kind: 'thought'; content: string | null }
   | { kind: 'final'; content: string | null }
-  | { kind: 'tool'; toolName: string | null; toolArguments: string | null; resultContent: string | null; durationMs: number }
+  | { kind: 'tool'; toolName: string | null; durationMs: number; body: string | null }
 
 // A TOOL_CALL and its TOOL_RESULT are one action, not two — merge adjacent
 // pairs into a single line so the trace reads as a scan, not a transcript.
+// Raw tool arguments are only shown as a last resort (no result yet) — the
+// result sentence already carries what the call was checking, in Arabic.
 function groupTrace(steps: AgentStepInfo[]): TraceItem[] {
   const items: TraceItem[] = []
   for (let i = 0; i < steps.length; i++) {
@@ -57,16 +59,15 @@ function groupTrace(steps: AgentStepInfo[]): TraceItem[] {
         items.push({
           kind: 'tool',
           toolName: s.toolName,
-          toolArguments: s.toolArguments,
-          resultContent: next.content,
           durationMs: s.durationMs + next.durationMs,
+          body: next.content ?? s.toolArguments,
         })
         i++
       } else {
-        items.push({ kind: 'tool', toolName: s.toolName, toolArguments: s.toolArguments, resultContent: null, durationMs: s.durationMs })
+        items.push({ kind: 'tool', toolName: s.toolName, durationMs: s.durationMs, body: s.toolArguments })
       }
     } else if (s.type === 'TOOL_RESULT') {
-      items.push({ kind: 'tool', toolName: s.toolName, toolArguments: null, resultContent: s.content, durationMs: s.durationMs })
+      items.push({ kind: 'tool', toolName: s.toolName, durationMs: s.durationMs, body: s.content })
     } else if (s.type === 'THOUGHT') {
       items.push({ kind: 'thought', content: s.content })
     } else {
@@ -244,70 +245,52 @@ function IntelRow({ r }: { r: FraudIntelRecord }) {
 // Same THOUGHT → TOOL_CALL/TOOL_RESULT → FINAL_ANSWER shape as
 // DecisionResponse.agents[].trace — rendered in the feed's own ledger
 // language instead of the Mission Control panel's judge-facing style.
-// Adjacent TOOL_CALL/TOOL_RESULT pairs are pre-merged by groupTrace() into
-// one line each, so this only ever draws three kinds of row.
+// No icons: a leading glyph column (circles/arrows) was tried and read as
+// noise, especially with the tool rows' meta line already forcing a
+// direction switch (Arabic result under an LTR tool name). Every row now
+// follows the exact tiny-label-then-value rhythm the cells grid above it
+// already uses, just separated by the feed's own hairline rule instead of
+// a new visual language.
 function ReasoningTrace({ steps }: { steps: AgentStepInfo[] }) {
   const items = groupTrace(steps)
   return (
-    <div className="anim-fade-up mt-2.5 border-t border-ink-12 pt-2">
+    <div className="anim-fade-up mt-2.5 divide-y divide-ink-12 border-t border-ink-12">
       {items.map((item, i) => {
         if (item.kind === 'thought') {
           return (
-            <div key={i} className="flex gap-2 py-2">
-              <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ink-20">○</span>
-              <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold tracking-[0.06em] text-ink-40">تفكير</span>
-                {item.content && (
-                  <p className="mt-0.5 text-[11.5px] italic leading-snug text-ink-55" dir="auto">
-                    {item.content}
-                  </p>
-                )}
-              </div>
+            <div key={i} className="py-2.5">
+              <span className="text-[8.5px] text-ink-40">تفكير</span>
+              {item.content && (
+                <p className="mt-1 text-[12.5px] italic leading-relaxed text-ink-55" dir="auto">
+                  {item.content}
+                </p>
+              )}
             </div>
           )
         }
         if (item.kind === 'final') {
           return (
-            <div key={i} className="flex gap-2 py-2">
-              <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ochre">▮</span>
-              <div className="min-w-0 flex-1">
-                <span className="text-[9px] font-bold tracking-[0.06em] text-ochre">الخلاصة</span>
-                {item.content && (
-                  <p className="mt-0.5 border-r-[3px] border-ochre bg-ochre-soft px-2 py-1 text-[11.5px] leading-snug text-ochre" dir="auto">
-                    {item.content}
-                  </p>
-                )}
-              </div>
+            <div key={i} className="py-2.5">
+              <span className="text-[8.5px] font-bold text-ochre">الخلاصة</span>
+              {item.content && (
+                <p className="mt-1 border-r-[3px] border-ochre bg-ochre-soft px-2.5 py-1.5 text-[12.5px] leading-relaxed text-ochre" dir="auto">
+                  {item.content}
+                </p>
+              )}
             </div>
           )
         }
         return (
-          <div key={i} className="flex gap-2 py-2">
-            <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ink-20" dir="ltr">⟶</span>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-baseline gap-1.5">
-                {item.toolName && (
-                  <span className="truncate font-mono text-[11px] font-bold text-ink-70" dir="ltr">
-                    {item.toolName}
-                  </span>
-                )}
-                {item.durationMs > 0 && (
-                  <span className="mr-auto shrink-0 text-[9px] text-ink-20 tnum" dir="ltr">
-                    {item.durationMs}ms
-                  </span>
-                )}
-              </div>
-              {item.toolArguments && (
-                <p className="mt-0.5 truncate font-mono text-[9.5px] text-ink-40" dir="ltr">
-                  {item.toolArguments}
-                </p>
-              )}
-              {item.resultContent && (
-                <p className="mt-0.5 text-[11.5px] leading-snug text-ink-70" dir="auto">
-                  {item.resultContent}
-                </p>
-              )}
-            </div>
+          <div key={i} className="py-2.5">
+            <span className="text-[8.5px] text-ink-40" dir="ltr">
+              {item.toolName}
+              {item.durationMs > 0 && ` · ${item.durationMs}ms`}
+            </span>
+            {item.body && (
+              <p className="mt-1 text-[12.5px] leading-relaxed text-ink" dir="auto">
+                {item.body}
+              </p>
+            )}
           </div>
         )
       })}
