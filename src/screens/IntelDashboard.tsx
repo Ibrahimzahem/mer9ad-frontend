@@ -22,13 +22,6 @@ const entryLabel: Record<EntryMethod, string> = {
   autofilled: 'معبّأ',
 }
 
-const stepLabel: Record<AgentStepInfo['type'], string> = {
-  THOUGHT: 'تفكير',
-  TOOL_CALL: 'استدعاء أداة',
-  TOOL_RESULT: 'نتيجة',
-  FINAL_ANSWER: 'الخلاصة',
-}
-
 // The docs promise `trace` is a flat, `step`-keyed array (matching
 // agents[].trace on /api/transfer-intent). The live backend actually sends
 // steps wrapped under `.steps` and keyed `stepNumber`. Accept either so
@@ -45,6 +38,42 @@ function normalizeTrace(trace: FraudIntelTrace | null): AgentStepInfo[] {
     content: s.content,
     durationMs: s.durationMs,
   }))
+}
+
+type TraceItem =
+  | { kind: 'thought'; content: string | null }
+  | { kind: 'final'; content: string | null }
+  | { kind: 'tool'; toolName: string | null; toolArguments: string | null; resultContent: string | null; durationMs: number }
+
+// A TOOL_CALL and its TOOL_RESULT are one action, not two — merge adjacent
+// pairs into a single line so the trace reads as a scan, not a transcript.
+function groupTrace(steps: AgentStepInfo[]): TraceItem[] {
+  const items: TraceItem[] = []
+  for (let i = 0; i < steps.length; i++) {
+    const s = steps[i]
+    if (s.type === 'TOOL_CALL') {
+      const next = steps[i + 1]
+      if (next?.type === 'TOOL_RESULT' && next.toolName === s.toolName) {
+        items.push({
+          kind: 'tool',
+          toolName: s.toolName,
+          toolArguments: s.toolArguments,
+          resultContent: next.content,
+          durationMs: s.durationMs + next.durationMs,
+        })
+        i++
+      } else {
+        items.push({ kind: 'tool', toolName: s.toolName, toolArguments: s.toolArguments, resultContent: null, durationMs: s.durationMs })
+      }
+    } else if (s.type === 'TOOL_RESULT') {
+      items.push({ kind: 'tool', toolName: s.toolName, toolArguments: null, resultContent: s.content, durationMs: s.durationMs })
+    } else if (s.type === 'THOUGHT') {
+      items.push({ kind: 'thought', content: s.content })
+    } else {
+      items.push({ kind: 'final', content: s.content })
+    }
+  }
+  return items
 }
 
 export function IntelDashboard() {
@@ -212,55 +241,76 @@ function IntelRow({ r }: { r: FraudIntelRecord }) {
   )
 }
 
-// Same THOUGHT → TOOL_CALL → TOOL_RESULT → FINAL_ANSWER shape as
+// Same THOUGHT → TOOL_CALL/TOOL_RESULT → FINAL_ANSWER shape as
 // DecisionResponse.agents[].trace — rendered in the feed's own ledger
 // language instead of the Mission Control panel's judge-facing style.
+// Adjacent TOOL_CALL/TOOL_RESULT pairs are pre-merged by groupTrace() into
+// one line each, so this only ever draws three kinds of row.
 function ReasoningTrace({ steps }: { steps: AgentStepInfo[] }) {
+  const items = groupTrace(steps)
   return (
     <div className="anim-fade-up mt-2.5 border-t border-ink-12 pt-2">
-      {steps.map((step, i) => (
-        <div key={i} className="flex gap-2.5 py-1.5">
-          <span className="w-4 shrink-0 pt-px text-[9px] font-bold text-ink-20 tnum" dir="ltr">
-            {String(step.step).padStart(2, '0')}
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[8.5px] font-bold tracking-[0.06em] text-ink-40">
-                {stepLabel[step.type]}
-              </span>
-              {step.toolName && (
-                <span className="truncate font-mono text-[10px] text-ink-55" dir="ltr">
-                  {step.toolName}
-                </span>
+      {items.map((item, i) => {
+        if (item.kind === 'thought') {
+          return (
+            <div key={i} className="flex gap-2 py-2">
+              <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ink-20">○</span>
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] font-bold tracking-[0.06em] text-ink-40">تفكير</span>
+                {item.content && (
+                  <p className="mt-0.5 text-[11.5px] italic leading-snug text-ink-55" dir="auto">
+                    {item.content}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        }
+        if (item.kind === 'final') {
+          return (
+            <div key={i} className="flex gap-2 py-2">
+              <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ochre">▮</span>
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] font-bold tracking-[0.06em] text-ochre">الخلاصة</span>
+                {item.content && (
+                  <p className="mt-0.5 border-r-[3px] border-ochre bg-ochre-soft px-2 py-1 text-[11.5px] leading-snug text-ochre" dir="auto">
+                    {item.content}
+                  </p>
+                )}
+              </div>
+            </div>
+          )
+        }
+        return (
+          <div key={i} className="flex gap-2 py-2">
+            <span className="w-3 shrink-0 pt-px text-center text-[10px] text-ink-20" dir="ltr">⟶</span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline gap-1.5">
+                {item.toolName && (
+                  <span className="truncate font-mono text-[11px] font-bold text-ink-70" dir="ltr">
+                    {item.toolName}
+                  </span>
+                )}
+                {item.durationMs > 0 && (
+                  <span className="mr-auto shrink-0 text-[9px] text-ink-20 tnum" dir="ltr">
+                    {item.durationMs}ms
+                  </span>
+                )}
+              </div>
+              {item.toolArguments && (
+                <p className="mt-0.5 truncate font-mono text-[9.5px] text-ink-40" dir="ltr">
+                  {item.toolArguments}
+                </p>
               )}
-              {step.durationMs > 0 && (
-                <span className="mr-auto shrink-0 text-[9px] text-ink-20 tnum" dir="ltr">
-                  {step.durationMs}ms
-                </span>
+              {item.resultContent && (
+                <p className="mt-0.5 text-[11.5px] leading-snug text-ink-70" dir="auto">
+                  {item.resultContent}
+                </p>
               )}
             </div>
-            {step.toolArguments && (
-              <p className="mt-0.5 truncate font-mono text-[9.5px] text-ink-40" dir="ltr">
-                {step.toolArguments}
-              </p>
-            )}
-            {step.content && (
-              <p
-                className={cn(
-                  'mt-0.5 text-[11px] leading-snug',
-                  step.type === 'THOUGHT' && 'italic text-ink-55',
-                  step.type === 'TOOL_RESULT' && 'text-ink-70',
-                  step.type === 'FINAL_ANSWER' &&
-                    'border-r-[3px] border-ochre bg-ochre-soft px-2 py-1 text-ochre',
-                )}
-                dir="auto"
-              >
-                {step.content}
-              </p>
-            )}
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }
