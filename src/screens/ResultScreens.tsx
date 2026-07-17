@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../state/AppContext'
 import { formatMoney, maskIban } from '../lib/format'
 import { Kicker } from '../components/ui'
-import { MissionControl } from '../components/MissionControl'
 
 // A rotated ink stamp — the one expressive flourish, reserved for outcomes.
 function Stamp({ text, tone }: { text: string; tone: 'green' | 'red' }) {
@@ -88,7 +87,7 @@ function ReceiptRow({ k, v, last }: { k: string; v: string; last?: boolean }) {
 
 // RED — a firm, calm block. Stamp + coercion aside + report reference + mission control.
 export function BlockedScreen() {
-  const { resolution, decision, resetAll } = useApp()
+  const { resolution, resetAll } = useApp()
 
   return (
     <div className="anim-fade-up flex h-full flex-col overflow-y-auto px-6 pb-6 pt-[calc(env(safe-area-inset-top)+3.5rem)]">
@@ -106,16 +105,6 @@ export function BlockedScreen() {
           </p>
         )}
       </div>
-
-      {/* Mission Control — shows which agents fired and what they found */}
-      {decision?.agents && decision.agents.length > 0 && (
-        <MissionControl
-          agents={decision.agents}
-          sar={decision.sar}
-          lesson={decision.lesson}
-          finalDecision="RED"
-        />
-      )}
 
       {/* coercion-awareness aside — a margin-ruled note */}
       <div className="mt-7 border-r-[3px] border-oxblood bg-oxblood-soft px-3.5 py-3">

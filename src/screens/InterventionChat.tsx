@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../state/AppContext'
 import { replyToIntervention } from '../lib/api'
 import { Seal } from '../components/ui'
-import { MissionControl } from '../components/MissionControl'
 
 interface Msg {
   id: number
@@ -99,16 +98,6 @@ export function InterventionChat() {
         </p>
       </div>
       <div className="mx-5 mt-3 h-0.5 shrink-0 bg-ink" />
-
-      {/* Agent mission control — shows what the agents found */}
-      {decision?.agents && decision.agents.length > 0 && (
-        <div className="no-scrollbar max-h-[40%] overflow-y-auto px-5">
-          <MissionControl
-            agents={decision.agents}
-            finalDecision="ORANGE"
-          />
-        </div>
-      )}
 
       {/* messages */}
       <div
