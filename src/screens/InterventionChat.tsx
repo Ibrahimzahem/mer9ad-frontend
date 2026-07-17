@@ -81,7 +81,7 @@ export function InterventionChat() {
             <div className="leading-none">
               <div className="font-display text-[15px] font-extrabold text-ink">محادثة آمنة</div>
               <div className="mt-1 text-[10px] font-semibold tracking-[0.18em] text-ink-55">
-                درع · SHIELD
+                راصد
               </div>
             </div>
           </div>
@@ -152,7 +152,7 @@ function ShieldNote({ text }: { text: string }) {
     <div className="anim-bubble max-w-[90%] self-start border-r-2 border-ink pr-3.5">
       <div className="mb-1.5 flex items-center gap-1.5 text-[9.5px] font-bold tracking-[0.2em] text-ink-40">
         <span className="h-px w-3 bg-ink-40" />
-        درع
+        راصد
       </div>
       <p className="text-[15px] leading-[1.75] text-ink">{text}</p>
     </div>

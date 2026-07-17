@@ -32,7 +32,7 @@ export function AppHeader() {
             بنك المدى
           </div>
           <div className="mt-1.5 text-[10px] font-semibold tracking-[0.24em] text-ink-55">
-            مؤمَّن بـ درع
+            مؤمَّن بـ راصد
           </div>
         </button>
 

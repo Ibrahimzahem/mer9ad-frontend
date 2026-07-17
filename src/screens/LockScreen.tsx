@@ -50,7 +50,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     <div className="flex h-full flex-col items-center px-6 pt-[calc(env(safe-area-inset-top)+3rem)] pb-8">
       <Seal className="h-9 w-9 text-[15px]" />
       <div className="mt-4 font-display text-[22px] font-black tracking-tight text-ink">بنك المدى</div>
-      <div className="mt-1.5 text-[10px] font-semibold tracking-[0.24em] text-ink-55">مؤمَّن بـ درع</div>
+      <div className="mt-1.5 text-[10px] font-semibold tracking-[0.24em] text-ink-55">مؤمَّن بـ راصد</div>
 
       <p className="mt-9 text-[13px] text-ink-70">أدخل رمز الدخول</p>
 

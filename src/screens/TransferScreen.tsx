@@ -90,7 +90,7 @@ export function TransferScreen() {
       if (e instanceof IbanValidationError) {
         setIbanError('رقم آيبان غير صالح — يجب أن يبدأ بـ SA يتبعه 22 رقمًا.')
       } else {
-        setError('تعذّر الاتصال بالخادم. تأكد من تشغيل خادم درع على المنفذ 8080.')
+        setError('تعذّر الاتصال بالخادم. تأكد من تشغيل خادم راصد على المنفذ 8080.')
       }
     } finally {
       setSubmitting(false)

@@ -68,7 +68,7 @@ export function HomeScreen() {
       <div className="mt-8 flex items-start gap-3 border-t border-ink pt-3.5">
         <Seal />
         <div>
-          <div className="font-display text-[12.5px] font-extrabold text-ink">محميّ بنظام درع</div>
+          <div className="font-display text-[12.5px] font-extrabold text-ink">محميّ بنظام راصد</div>
           <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-55">
             نراقب الإكراه لحظة التحويل — لا الهوية.
           </p>
